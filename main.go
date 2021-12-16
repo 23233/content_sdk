@@ -1,8 +1,10 @@
 package content_sdk
 
 import (
+	"bytes"
 	"errors"
 	"github.com/imroc/req"
+	"io"
 	"os"
 	"path/filepath"
 )
@@ -83,18 +85,39 @@ func (c *Sdk) ImageSecCheck(imgPath string) (bool, error) {
 	p := filepath.Base(imgPath)
 	ext := filepath.Ext(imgPath)
 	name := p[0 : len(p)-len(ext)]
+	return c.imgUpload(file, name+ext)
+}
+
+// ImageSecCheckOfBytes 图片安全校验使用bytes
+func (c *Sdk) ImageSecCheckOfBytes(content []byte, fileName string) (bool, error) {
+
+	f, err := os.Create(fileName)
+	if err != nil {
+		return false, err
+	}
+	_, err = io.Copy(f, bytes.NewReader(content))
+	if err != nil {
+		return false, err
+	}
+	return c.imgUpload(f, fileName)
+}
+
+func (c *Sdk) imgUpload(f io.ReadCloser, fileName string) (bool, error) {
 	resp, err := req.Post(c.Host+"/img_check", req.FileUpload{
-		File:      file,
+		File:      f,
 		FieldName: "file", // FieldName is form field name
-		FileName:  name + ext,
+		FileName:  fileName,
 	})
 	if err != nil {
 		return false, err
 	}
-	var r ImgCheckResp
-	err = resp.ToJSON(&r)
-	if err != nil {
-		return false, err
+	if resp.Response().StatusCode == 200 {
+		var r ImgCheckResp
+		err = resp.ToJSON(&r)
+		if err != nil {
+			return false, err
+		}
+		return r.Pass, nil
 	}
-	return r.Pass, nil
+	return false, StatusFail
 }
