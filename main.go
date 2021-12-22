@@ -88,6 +88,26 @@ func (c *Sdk) ImageSecCheck(imgPath string) (bool, error) {
 	return c.imgUpload(file, name+ext)
 }
 
+// ImageSecCheckUseUrl 图片安全校验 使用url
+func (c *Sdk) ImageSecCheckUseUrl(url string) (bool, error) {
+	var r = map[string]interface{}{
+		"url": url,
+	}
+	resp, err := req.Post(c.Host+"/img_check_url", req.BodyJSON(&r))
+	if err != nil {
+		return false, err
+	}
+	if resp.Response().StatusCode == 200 {
+		var r ImgCheckResp
+		err = resp.ToJSON(&r)
+		if err != nil {
+			return false, err
+		}
+		return r.Pass, nil
+	}
+	return false, StatusFail
+}
+
 // ImageSecCheckOfBytes 图片安全校验使用bytes
 func (c *Sdk) ImageSecCheckOfBytes(content []byte, fileName string) (bool, error) {
 
